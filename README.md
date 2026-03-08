@@ -1,2 +1,2 @@
 # hybrid-nids
-autoencoder and isolation forest( explainable ai)
+autoencoder and isolation forest (explainable ai)
