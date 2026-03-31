@@ -1,0 +1,428 @@
+{
+  "categories": {
+    "DoS": {
+      "description": "Denial of Service attacks flood target systems with traffic or exploit vulnerabilities to make services unavailable.",
+      "mitre_tactic": "Impact",
+      "mitre_tactic_id": "TA0040",
+      "attacks": {
+        "back": {
+          "description": "Apache webserver DoS by sending requests with trailing slash in URL. Causes CPU exhaustion.",
+          "mitre_technique": "Endpoint Denial of Service",
+          "mitre_technique_id": "T1499",
+          "subtechnique": "Application Exhaustion Flood",
+          "subtechnique_id": "T1499.003",
+          "severity": "high",
+          "indicators": ["high src_bytes", "high count", "high serror_rate"],
+          "response": ["Block source IP", "Rate limit HTTP requests", "Monitor CPU utilization"]
+        },
+        "land": {
+          "description": "Sends TCP SYN packet with source IP/port equal to destination IP/port, causing target to loop.",
+          "mitre_technique": "Network Denial of Service",
+          "mitre_technique_id": "T1498",
+          "subtechnique": "Direct Network Flood",
+          "subtechnique_id": "T1498.001",
+          "severity": "medium",
+          "indicators": ["land=1", "same src/dst host", "zero dst_bytes"],
+          "response": ["Filter spoofed packets at perimeter", "Enable ingress filtering (BCP38)"]
+        },
+        "neptune": {
+          "description": "SYN flood attack. Sends many SYN packets without completing the TCP handshake, exhausting connection tables.",
+          "mitre_technique": "Network Denial of Service",
+          "mitre_technique_id": "T1498",
+          "subtechnique": "Direct Network Flood",
+          "subtechnique_id": "T1498.001",
+          "severity": "critical",
+          "indicators": ["high serror_rate", "high dst_host_serror_rate", "flag=S0", "low dst_bytes"],
+          "response": ["Enable SYN cookies", "Rate-limit SYN packets", "Deploy DDoS scrubbing service"]
+        },
+        "pod": {
+          "description": "Ping of Death. Sends malformed oversized ICMP packets causing buffer overflow in target.",
+          "mitre_technique": "Endpoint Denial of Service",
+          "mitre_technique_id": "T1499",
+          "subtechnique": "OS Exhaustion Flood",
+          "subtechnique_id": "T1499.001",
+          "severity": "medium",
+          "indicators": ["protocol_type=icmp", "large src_bytes", "wrong_fragment > 0"],
+          "response": ["Patch OS", "Block oversized ICMP at firewall"]
+        },
+        "smurf": {
+          "description": "ICMP broadcast amplification attack. Sends ICMP echo to broadcast address with spoofed victim source IP.",
+          "mitre_technique": "Network Denial of Service",
+          "mitre_technique_id": "T1498",
+          "subtechnique": "Reflection Amplification",
+          "subtechnique_id": "T1498.002",
+          "severity": "critical",
+          "indicators": ["protocol_type=icmp", "high count", "dst_bytes=0"],
+          "response": ["Disable IP broadcast forwarding", "Block directed broadcasts", "Implement BCP38"]
+        },
+        "teardrop": {
+          "description": "Sends fragmented IP packets with overlapping offsets, causing reassembly crash in kernel.",
+          "mitre_technique": "Endpoint Denial of Service",
+          "mitre_technique_id": "T1499",
+          "subtechnique": "OS Exhaustion Flood",
+          "subtechnique_id": "T1499.001",
+          "severity": "high",
+          "indicators": ["wrong_fragment > 0", "low duration", "dst_bytes=0"],
+          "response": ["Patch OS", "Implement IP fragment reassembly limits"]
+        },
+        "apache2": {
+          "description": "Apache httpd DoS via chunked encoding vulnerability. Causes memory exhaustion in the web server.",
+          "mitre_technique": "Endpoint Denial of Service",
+          "mitre_technique_id": "T1499",
+          "subtechnique": "Application Exhaustion Flood",
+          "subtechnique_id": "T1499.003",
+          "severity": "high",
+          "indicators": ["service=http", "high src_bytes", "high count"],
+          "response": ["Update Apache to patched version", "Limit request body size", "Enable ModEvasive"]
+        },
+        "udpstorm": {
+          "description": "Creates a loop between two UDP services (e.g. echo and chargen) generating massive traffic.",
+          "mitre_technique": "Network Denial of Service",
+          "mitre_technique_id": "T1498",
+          "subtechnique": "Direct Network Flood",
+          "subtechnique_id": "T1498.001",
+          "severity": "high",
+          "indicators": ["protocol_type=udp", "high count", "high src_bytes"],
+          "response": ["Disable echo/chargen services", "Rate-limit UDP traffic"]
+        },
+        "processtable": {
+          "description": "Exhausts the process table by spawning many processes, preventing new process creation.",
+          "mitre_technique": "Endpoint Denial of Service",
+          "mitre_technique_id": "T1499",
+          "subtechnique": "OS Exhaustion Flood",
+          "subtechnique_id": "T1499.001",
+          "severity": "high",
+          "indicators": ["high count", "high dst_host_count", "service=ftp_data"],
+          "response": ["Limit per-user process count (ulimit)", "Monitor process table utilization"]
+        },
+        "mailbomb": {
+          "description": "Floods a mail server with massive volumes of email to exhaust storage or bandwidth.",
+          "mitre_technique": "Endpoint Denial of Service",
+          "mitre_technique_id": "T1499",
+          "subtechnique": "Application Exhaustion Flood",
+          "subtechnique_id": "T1499.003",
+          "severity": "medium",
+          "indicators": ["service=smtp", "high src_bytes", "high count"],
+          "response": ["Rate-limit incoming SMTP", "Enable anti-spam filtering", "Block source IP"]
+        }
+      }
+    },
+    "Probe": {
+      "description": "Reconnaissance attacks that scan for open ports, services, and vulnerabilities on target networks.",
+      "mitre_tactic": "Discovery / Reconnaissance",
+      "mitre_tactic_id": "TA0007 / TA0043",
+      "attacks": {
+        "ipsweep": {
+          "description": "Scans a range of IP addresses with ICMP echo or TCP SYN to discover live hosts.",
+          "mitre_technique": "Active Scanning",
+          "mitre_technique_id": "T1595",
+          "subtechnique": "Scanning IP Blocks",
+          "subtechnique_id": "T1595.001",
+          "severity": "medium",
+          "indicators": ["high dst_host_count", "low duration", "protocol_type=icmp or tcp", "low dst_bytes"],
+          "response": ["Deploy honeypots to detect scanners", "Alert on ICMP sweeps", "Block scanning source IPs"]
+        },
+        "nmap": {
+          "description": "Uses nmap tool for port scanning, OS fingerprinting, and service detection.",
+          "mitre_technique": "Active Scanning",
+          "mitre_technique_id": "T1595",
+          "subtechnique": "Vulnerability Scanning",
+          "subtechnique_id": "T1595.002",
+          "severity": "medium",
+          "indicators": ["high srv_count", "low duration", "flag=S0 or REJ", "diverse service distribution"],
+          "response": ["Block port scan source IPs at perimeter", "Tune IDS thresholds for port scan detection", "Minimize attack surface by closing unused ports"]
+        },
+        "portsweep": {
+          "description": "Scans a single host systematically across many ports to identify open services.",
+          "mitre_technique": "Active Scanning",
+          "mitre_technique_id": "T1595",
+          "subtechnique": "Scanning IP Blocks",
+          "subtechnique_id": "T1595.001",
+          "severity": "medium",
+          "indicators": ["high diff_srv_rate", "low dst_bytes", "high dst_host_diff_srv_rate"],
+          "response": ["Block source IP after scan threshold exceeded", "Deploy port-scan detection in IDS"]
+        },
+        "satan": {
+          "description": "SATAN (Security Administrator Tool for Analyzing Networks) automated vulnerability scanner.",
+          "mitre_technique": "Active Scanning",
+          "mitre_technique_id": "T1595",
+          "subtechnique": "Vulnerability Scanning",
+          "subtechnique_id": "T1595.002",
+          "severity": "medium",
+          "indicators": ["high srv_count", "high diff_srv_rate", "various services"],
+          "response": ["Patch detected vulnerabilities immediately", "Block scanner source IP"]
+        },
+        "mscan": {
+          "description": "Automated mass host and port scanner targeting multiple hosts simultaneously.",
+          "mitre_technique": "Active Scanning",
+          "mitre_technique_id": "T1595",
+          "subtechnique": "Scanning IP Blocks",
+          "subtechnique_id": "T1595.001",
+          "severity": "low",
+          "indicators": ["moderate count", "diverse dst_host_count", "low duration per connection"],
+          "response": ["Implement rate limiting on connection attempts", "Alert on mass scan patterns"]
+        },
+        "saint": {
+          "description": "SAINT (Security Administrator's Integrated Network Tool) vulnerability assessment scanner.",
+          "mitre_technique": "Active Scanning",
+          "mitre_technique_id": "T1595",
+          "subtechnique": "Vulnerability Scanning",
+          "subtechnique_id": "T1595.002",
+          "severity": "medium",
+          "indicators": ["varied service access", "high diff_srv_rate", "low dst_bytes"],
+          "response": ["Block scanner source", "Review vulnerabilities found by scanner and patch"]
+        }
+      }
+    },
+    "R2L": {
+      "description": "Remote to Local attacks gain unauthorized access from a remote machine to a local user account.",
+      "mitre_tactic": "Initial Access / Credential Access",
+      "mitre_tactic_id": "TA0001 / TA0006",
+      "attacks": {
+        "ftp_write": {
+          "description": "Exploits anonymous FTP write access to upload files to the target system.",
+          "mitre_technique": "Exploit Public-Facing Application",
+          "mitre_technique_id": "T1190",
+          "subtechnique": null,
+          "subtechnique_id": null,
+          "severity": "high",
+          "indicators": ["service=ftp", "logged_in=1", "high num_file_creations"],
+          "response": ["Disable anonymous FTP write", "Enforce strong FTP authentication", "Monitor FTP upload activity"]
+        },
+        "guess_passwd": {
+          "description": "Brute-force or dictionary attack against login services (telnet, ftp, ssh) to guess credentials.",
+          "mitre_technique": "Brute Force",
+          "mitre_technique_id": "T1110",
+          "subtechnique": "Password Guessing",
+          "subtechnique_id": "T1110.001",
+          "severity": "high",
+          "indicators": ["high num_failed_logins", "logged_in=0", "service=telnet or ftp"],
+          "response": ["Enforce account lockout policy", "Use MFA", "Block IPs with excessive failed logins", "Switch to key-based auth"]
+        },
+        "imap": {
+          "description": "Exploits IMAP buffer overflow vulnerability to gain shell access.",
+          "mitre_technique": "Exploit Public-Facing Application",
+          "mitre_technique_id": "T1190",
+          "subtechnique": null,
+          "subtechnique_id": null,
+          "severity": "critical",
+          "indicators": ["service=imap4", "root_shell=1", "logged_in=1"],
+          "response": ["Patch IMAP server", "Restrict IMAP access by IP", "Monitor for shell spawns from mail processes"]
+        },
+        "multihop": {
+          "description": "Attacker pivots through multiple compromised intermediary hosts to reach target system.",
+          "mitre_technique": "Lateral Movement",
+          "mitre_technique_id": "T1021",
+          "subtechnique": "Remote Services",
+          "subtechnique_id": "T1021.004",
+          "severity": "critical",
+          "indicators": ["logged_in=1", "is_guest_login=1", "num_compromised > 0"],
+          "response": ["Segment network to limit lateral movement", "Monitor for unusual authentication chains", "Implement zero trust architecture"]
+        },
+        "phf": {
+          "description": "CGI script vulnerability in phf phone book CGI script allows remote command execution.",
+          "mitre_technique": "Exploit Public-Facing Application",
+          "mitre_technique_id": "T1190",
+          "subtechnique": null,
+          "subtechnique_id": null,
+          "severity": "high",
+          "indicators": ["service=http", "root_shell=1", "hot > 0"],
+          "response": ["Remove phf CGI script", "Disable unused CGI scripts", "Use WAF to block command injection"]
+        },
+        "spy": {
+          "description": "Attacker collects sensitive information from host after gaining access.",
+          "mitre_technique": "Collection",
+          "mitre_technique_id": "TA0009",
+          "subtechnique": "Data from Local System",
+          "subtechnique_id": "T1005",
+          "severity": "high",
+          "indicators": ["logged_in=1", "num_access_files > 0", "is_guest_login=1"],
+          "response": ["Monitor file access patterns", "Encrypt sensitive data at rest", "Review user activity logs"]
+        },
+        "warezclient": {
+          "description": "Client side of warez (pirated software) FTP distribution, downloading illegal files.",
+          "mitre_technique": "Ingress Tool Transfer",
+          "mitre_technique_id": "T1105",
+          "subtechnique": null,
+          "subtechnique_id": null,
+          "severity": "medium",
+          "indicators": ["service=ftp_data", "high dst_bytes", "logged_in=1"],
+          "response": ["Monitor FTP data transfers", "Restrict FTP data connections", "Inspect transferred files"]
+        },
+        "warezmaster": {
+          "description": "Server side of warez FTP distribution, hosting and uploading pirated software.",
+          "mitre_technique": "Ingress Tool Transfer",
+          "mitre_technique_id": "T1105",
+          "subtechnique": null,
+          "subtechnique_id": null,
+          "severity": "high",
+          "indicators": ["service=ftp", "high src_bytes", "num_file_creations > 0"],
+          "response": ["Disable FTP or restrict write access", "Monitor disk space for unexpected large files", "Audit FTP user accounts"]
+        },
+        "sendmail": {
+          "description": "Exploits sendmail daemon vulnerabilities (debug, wiz commands) for unauthorized access.",
+          "mitre_technique": "Exploit Public-Facing Application",
+          "mitre_technique_id": "T1190",
+          "subtechnique": null,
+          "subtechnique_id": null,
+          "severity": "critical",
+          "indicators": ["service=smtp", "root_shell=1", "hot > 0"],
+          "response": ["Patch sendmail to latest version", "Disable DEBUG and WIZ commands", "Switch to modern MTA (Postfix)"]
+        },
+        "named": {
+          "description": "Exploits BIND named DNS server vulnerabilities for unauthorized access or DoS.",
+          "mitre_technique": "Exploit Public-Facing Application",
+          "mitre_technique_id": "T1190",
+          "subtechnique": null,
+          "subtechnique_id": null,
+          "severity": "critical",
+          "indicators": ["service=domain or domain_u", "root_shell=1", "num_root > 0"],
+          "response": ["Update BIND to patched version", "Restrict DNS zone transfers", "Run BIND in chroot jail"]
+        },
+        "snmpgetattack": {
+          "description": "Exploits SNMP GET requests with default community strings to extract sensitive device information.",
+          "mitre_technique": "Network Sniffing",
+          "mitre_technique_id": "T1040",
+          "subtechnique": null,
+          "subtechnique_id": null,
+          "severity": "medium",
+          "indicators": ["service=snmp", "protocol_type=udp", "high dst_bytes"],
+          "response": ["Change default SNMP community strings", "Upgrade to SNMPv3 with authentication", "Restrict SNMP access by IP ACL"]
+        },
+        "snmpguess": {
+          "description": "Brute-force attack against SNMP community strings to gain read/write access to network devices.",
+          "mitre_technique": "Brute Force",
+          "mitre_technique_id": "T1110",
+          "subtechnique": "Password Spraying",
+          "subtechnique_id": "T1110.003",
+          "severity": "high",
+          "indicators": ["service=snmp", "high count", "protocol_type=udp", "num_failed_logins > 0"],
+          "response": ["Deploy SNMPv3", "Implement lockout after failed SNMP attempts", "Monitor SNMP community string guessing"]
+        },
+        "xlock": {
+          "description": "Exploits xlock X Window System locking program to gain root access.",
+          "mitre_technique": "Exploitation for Privilege Escalation",
+          "mitre_technique_id": "T1068",
+          "subtechnique": null,
+          "subtechnique_id": null,
+          "severity": "high",
+          "indicators": ["su_attempted=1", "root_shell=1", "service=X11"],
+          "response": ["Remove setuid bit from xlock", "Disable X11 remote access", "Update X11 packages"]
+        },
+        "xsnoop": {
+          "description": "Sniffs X11 display traffic to capture keystrokes, screenshots, and user activity.",
+          "mitre_technique": "Input Capture",
+          "mitre_technique_id": "T1056",
+          "subtechnique": "Keylogging",
+          "subtechnique_id": "T1056.001",
+          "severity": "high",
+          "indicators": ["service=X11", "logged_in=1", "hot > 0"],
+          "response": ["Enable X11 authentication (xauth/MIT-MAGIC-COOKIE)", "Encrypt X11 connections via SSH tunneling", "Restrict X11 DISPLAY access"]
+        },
+        "httptunnel": {
+          "description": "Tunnels arbitrary traffic over HTTP to bypass firewall restrictions.",
+          "mitre_technique": "Protocol Tunneling",
+          "mitre_technique_id": "T1572",
+          "subtechnique": null,
+          "subtechnique_id": null,
+          "severity": "high",
+          "indicators": ["service=http", "high src_bytes and dst_bytes", "hot > 5"],
+          "response": ["Deep packet inspection for HTTP tunneling", "Monitor unusual HTTP traffic patterns", "Implement web proxy with SSL inspection"]
+        },
+        "worm": {
+          "description": "Self-replicating malware that spreads across network connections autonomously.",
+          "mitre_technique": "Replication Through Removable Media / Lateral Movement",
+          "mitre_technique_id": "T1091",
+          "subtechnique": null,
+          "subtechnique_id": null,
+          "severity": "critical",
+          "indicators": ["high count", "high dst_host_count", "num_compromised > 0"],
+          "response": ["Isolate infected hosts immediately", "Deploy network segmentation", "Run full AV/EDR scan", "Apply security patches"]
+        }
+      }
+    },
+    "U2R": {
+      "description": "User to Root attacks escalate from normal user privileges to root/superuser on a local machine.",
+      "mitre_tactic": "Privilege Escalation",
+      "mitre_tactic_id": "TA0004",
+      "attacks": {
+        "buffer_overflow": {
+          "description": "Exploits buffer overflow vulnerabilities in privileged programs to gain root shell via controlled stack/heap overwrite.",
+          "mitre_technique": "Exploitation for Privilege Escalation",
+          "mitre_technique_id": "T1068",
+          "subtechnique": null,
+          "subtechnique_id": null,
+          "severity": "critical",
+          "indicators": ["root_shell=1", "logged_in=1", "num_root > 0", "hot > 0"],
+          "response": ["Enable ASLR and DEP/NX", "Patch vulnerable programs immediately", "Use stack canaries", "Monitor for root shell spawns"]
+        },
+        "loadmodule": {
+          "description": "Exploits insecure IFS variable handling in setuid shell scripts to load malicious modules.",
+          "mitre_technique": "Hijack Execution Flow",
+          "mitre_technique_id": "T1574",
+          "subtechnique": "Path Interception by PATH Environment Variable",
+          "subtechnique_id": "T1574.007",
+          "severity": "high",
+          "indicators": ["root_shell=1", "su_attempted=1", "num_shells > 0"],
+          "response": ["Audit setuid/setgid binaries", "Use absolute paths in scripts", "Restrict module load permissions"]
+        },
+        "perl": {
+          "description": "Exploits Perl interpreter vulnerabilities or insecure Perl scripts with SUID bit to gain root access.",
+          "mitre_technique": "Command and Scripting Interpreter",
+          "mitre_technique_id": "T1059",
+          "subtechnique": "Perl",
+          "subtechnique_id": "T1059.006",
+          "severity": "high",
+          "indicators": ["root_shell=1", "logged_in=1", "num_root > 0"],
+          "response": ["Remove SUID bit from Perl interpreter", "Audit Perl scripts for privilege escalation", "Monitor Perl execution in privileged context"]
+        },
+        "rootkit": {
+          "description": "Installs kernel or user-level rootkit to maintain persistent privileged access and hide the compromise.",
+          "mitre_technique": "Rootkit",
+          "mitre_technique_id": "T1014",
+          "subtechnique": null,
+          "subtechnique_id": null,
+          "severity": "critical",
+          "indicators": ["root_shell=1", "num_root > 2", "num_file_creations > 0", "num_shells > 0"],
+          "response": ["Boot from clean media and inspect filesystem", "Rebuild compromised system from scratch", "Implement integrity monitoring (Tripwire, AIDE)", "Enable Secure Boot"]
+        },
+        "sqlattack": {
+          "description": "Exploits SQL injection or vulnerable database software to execute commands as DB or root user.",
+          "mitre_technique": "Exploit Public-Facing Application",
+          "mitre_technique_id": "T1190",
+          "subtechnique": null,
+          "subtechnique_id": null,
+          "severity": "critical",
+          "indicators": ["service=http or sql", "root_shell=1", "num_compromised > 0", "hot > 0"],
+          "response": ["Use parameterized queries / ORMs", "Apply principle of least privilege to DB accounts", "Deploy WAF with SQL injection rules", "Patch database software"]
+        },
+        "xterm": {
+          "description": "Exploits xterm terminal emulator vulnerabilities to execute commands with elevated privileges.",
+          "mitre_technique": "Exploitation for Privilege Escalation",
+          "mitre_technique_id": "T1068",
+          "subtechnique": null,
+          "subtechnique_id": null,
+          "severity": "high",
+          "indicators": ["service=X11", "root_shell=1", "su_attempted=1"],
+          "response": ["Remove SUID bit from xterm", "Update X11 packages", "Restrict X11 access"]
+        },
+        "ps": {
+          "description": "Exploits vulnerabilities in ps command or related utilities to gain elevated privileges.",
+          "mitre_technique": "Exploitation for Privilege Escalation",
+          "mitre_technique_id": "T1068",
+          "subtechnique": null,
+          "subtechnique_id": null,
+          "severity": "medium",
+          "indicators": ["root_shell=1", "logged_in=1", "num_root > 0"],
+          "response": ["Audit SUID binaries", "Patch procps package", "Monitor for unexpected privilege changes"]
+        }
+      }
+    }
+  },
+  "normal": {
+    "description": "Legitimate network traffic with no malicious intent.",
+    "mitre_tactic": null,
+    "mitre_tactic_id": null,
+    "response": ["No action required", "Continue monitoring baseline"]
+  }
+}

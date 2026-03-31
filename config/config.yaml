@@ -1,0 +1,92 @@
+paths:
+  model_dir: models
+  vector_store_dir: vector_store
+  data_dir: notebooks
+
+hybrid:
+  ae_weight: 0.6
+  if_weight: 0.4
+
+agreement:
+  # Band is computed relative to the Youden's J threshold (t):
+  #   low_thresh  = t * (1 - uncertainty_factor)
+  #   high_thresh = t * (1 + uncertainty_factor)
+  # Samples inside [low_thresh, high_thresh] → Tier 2 majority vote.
+  # 0.5 means the band spans ±50% of the threshold value.
+  uncertainty_factor: 0.5
+
+autoencoder:
+  input_dim: 116
+  encoder_dims: [32, 16]
+  latent_dim: 8
+  decoder_dims: [16, 32]
+  dropout_rate: 0.2
+  epochs: 100
+  batch_size: 32
+  patience: 10
+  lr_patience: 5
+  lr_factor: 0.5
+  min_lr: 1.0e-6
+  learning_rate: 0.001
+  validation_split: 0.2
+
+isolation_forest:
+  n_estimators: 200
+  contamination: 0.1
+  random_state: 42
+
+xgboost_arbitrator:
+  n_estimators: 200
+  max_depth: 6
+  learning_rate: 0.1
+  random_state: 42
+  use_label_encoder: false
+  eval_metric: logloss
+
+rag:
+  chunk_size: 500
+  chunk_overlap: 50
+  top_k: 5
+  embedding_model: all-MiniLM-L6-v2
+
+features:
+  n_features: 116
+  columns:
+    - duration
+    - src_bytes
+    - dst_bytes
+    - land
+    - wrong_fragment
+    - urgent
+    - hot
+    - num_failed_logins
+    - logged_in
+    - num_compromised
+    - root_shell
+    - su_attempted
+    - num_root
+    - num_file_creations
+    - num_shells
+    - num_access_files
+    - num_outbound_cmds
+    - is_host_login
+    - is_guest_login
+    - count
+    - srv_count
+    - serror_rate
+    - srv_serror_rate
+    - rerror_rate
+    - srv_rerror_rate
+    - same_srv_rate
+    - diff_srv_rate
+    - srv_diff_host_rate
+    - dst_host_count
+    - dst_host_srv_count
+    - dst_host_same_srv_rate
+    - dst_host_diff_srv_rate
+    - dst_host_same_src_port_rate
+    - dst_host_srv_diff_host_rate
+    - dst_host_serror_rate
+    - dst_host_srv_serror_rate
+    - dst_host_rerror_rate
+    - dst_host_srv_rerror_rate
