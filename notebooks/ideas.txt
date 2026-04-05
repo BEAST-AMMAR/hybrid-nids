@@ -1,0 +1,15 @@
+# rag with llm
+- not real time applicable 
+- system may return false answer with confidence
+- api key
+- out of my current expertise
+- too much work
+# only llm
+- will hallucinate
+- not sure if my model is accurate ( perform model accuracy check )
+- api keys are paid
+# what is rag and llm
+- llm large language model that understands human language, interprets answers
+- rag retrieval agumentated generation generates specific information about a topic and is used to improve llm's answers
+# llm and rag in nids
+- rag retrieves specific information and then sends it to llm like gpt or llma to get answer
