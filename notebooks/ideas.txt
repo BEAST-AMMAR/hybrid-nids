@@ -1,15 +1,22 @@
-# rag with llm
+# Rag with llm
 - not real time applicable 
 - system may return false answer with confidence
 - api key
 - out of my current expertise
 - too much work
-# only llm
+# Only llm
 - will hallucinate
 - not sure if my model is accurate ( perform model accuracy check )
 - api keys are paid
-# what is rag and llm
+# What is rag and llm
 - llm large language model that understands human language, interprets answers
 - rag retrieval agumentated generation generates specific information about a topic and is used to improve llm's answers
-# llm and rag in nids
+# Llm and rag in nids
 - rag retrieves specific information and then sends it to llm like gpt or llma to get answer
+# Dataset
+- protocol_type → tcp / udp / icmp
+- service → http, ftp, telnet, etc.
+- flag → connection status (SF, REJ, RSTO…)
+- src_bytes → data sent
+- dst_bytes → data received
+- serror / rerror rates → connection errors
