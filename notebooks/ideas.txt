@@ -20,3 +20,8 @@
 - src_bytes → data sent
 - dst_bytes → data received
 - serror / rerror rates → connection errors
+# 6/4/26
+- Autoencoder = learns what normal behavior looks like
+- Isolation Forest = finds unusual patterns
+- Hybrid model = decides if something is suspicious
+- RAG system = explains WHY it is suspicious
