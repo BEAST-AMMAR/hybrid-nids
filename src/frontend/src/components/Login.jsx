@@ -24,6 +24,10 @@ const Login = ({ setToken }) => {
         window.location.href = 'http://localhost:8000/login/google';
     };
 
+    const handleGithubLogin = () => {
+        window.location.href = 'http://localhost:8000/login/github';
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -84,7 +88,10 @@ const Login = ({ setToken }) => {
                     >
                         Sign in with Google
                     </button>
-                    <button className="bg-gray-700 text-white py-2 rounded flex items-center justify-center font-semibold border border-gray-600">
+                    <button
+                        onClick={handleGithubLogin}
+                        className="bg-gray-700 text-white py-2 rounded flex items-center justify-center font-semibold border border-gray-600 hover:bg-gray-600 transition"
+                    >
                         Sign in with GitHub
                     </button>
                 </div>

@@ -35,6 +35,8 @@ oauth = OAuth()
 import os
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
+GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
 
 if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
     oauth.register(
@@ -43,6 +45,19 @@ if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
         client_secret=GOOGLE_CLIENT_SECRET,
         server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
         client_kwargs={'scope': 'openid email profile'}
+    )
+
+if GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET:
+    oauth.register(
+        name='github',
+        client_id=GITHUB_CLIENT_ID,
+        client_secret=GITHUB_CLIENT_SECRET,
+        access_token_url='https://github.com/login/oauth/access_token',
+        access_token_params=None,
+        authorize_url='https://github.com/login/oauth/authorize',
+        authorize_params=None,
+        api_base_url='https://api.github.com/',
+        client_kwargs={'scope': 'user:email'},
     )
 
 # Global instances
@@ -89,16 +104,43 @@ async def auth_google(request: Request, db: Session = Depends(get_db)):
     if not user_info:
         raise HTTPException(status_code=401, detail="No user info from Google")
 
-    email = user_info['email']
+    return await handle_oauth_user(user_info['email'], user_info.get('name', ''), 'google', user_info.get('sub'), db)
+
+@app.get("/login/github")
+async def login_github(request: Request):
+    if not GITHUB_CLIENT_ID:
+        raise HTTPException(status_code=400, detail="GitHub OAuth not configured")
+    redirect_uri = request.url_for('auth_github')
+    return await oauth.github.authorize_redirect(request, str(redirect_uri))
+
+@app.get("/auth/github")
+async def auth_github(request: Request, db: Session = Depends(get_db)):
+    try:
+        token = await oauth.github.authorize_access_token(request)
+    except Exception:
+        raise HTTPException(status_code=401, detail="GitHub auth failed")
+
+    resp = await oauth.github.get('user', token=token)
+    user_info = resp.json()
+
+    email = user_info.get('email')
+    if not email:
+        # If email is not public, get it from emails endpoint
+        emails_resp = await oauth.github.get('user/emails', token=token)
+        emails = emails_resp.json()
+        email = next((e['email'] for e in emails if e['primary']), emails[0]['email'])
+
+    return await handle_oauth_user(email, user_info.get('name') or user_info.get('login'), 'github', str(user_info.get('id')), db)
+
+async def handle_oauth_user(email: str, name: str, provider: str, provider_id: str, db: Session):
     user = db.query(models.User).filter(models.User.email == email).first()
 
     if not user:
-        # Create new user via OAuth
         user = models.User(
             email=email,
-            full_name=user_info.get('name', ''),
-            oauth_provider='google',
-            oauth_id=user_info.get('sub'),
+            full_name=name,
+            oauth_provider=provider,
+            oauth_id=provider_id,
             is_active=True
         )
         db.add(user)
@@ -109,7 +151,6 @@ async def auth_google(request: Request, db: Session = Depends(get_db)):
     access_token = auth.create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
     )
-    # Redirect to frontend with token
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url=f"http://localhost:5173/login?token={access_token}")
 
