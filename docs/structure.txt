@@ -1,0 +1,13 @@
+Raw Network Traffic (42 features)
+        ↓
+Preprocessing
+        ↓
+Encoded + Scaled Features (~116)
+        ↓
+Autoencoder (learns normal behavior)
+        ↓
+Isolation Forest (detects statistical anomalies)
+        ↓
+Hybrid Score
+        ↓
+Attack / Normal Prediction
