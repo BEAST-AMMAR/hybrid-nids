@@ -1,0 +1,175 @@
+[
+  {
+    "id": "kb_1_dos",
+    "attack_type": "DoS",
+    "name": "Denial of Service",
+    "indicators": [
+      "high src_bytes",
+      "high count",
+      "high srv_count",
+      "high serror_rate",
+      "high srv_serror_rate"
+    ],
+    "description": "Denial-of-Service attacks flood a target system with excessive traffic, causing service disruption and preventing legitimate access.",
+    "feature_explanation": {
+      "src_bytes": "Large volume of data sent from source indicates flooding behavior.",
+      "count": "High number of connections suggests repeated requests to overwhelm the system.",
+      "serror_rate": "High SYN error rate indicates incomplete TCP handshakes typical in DoS attacks."
+    },
+    "source": "knowledge_base.json",
+    "last_updated": "2026-05-09",
+    "examples": [
+      "Which indicators suggest a DoS attack?",
+      "Explain why high src_bytes is a DoS indicator"
+    ]
+  },
+
+  {
+    "id": "kb_2_ddos",
+    "attack_type": "DDoS",
+    "name": "Distributed Denial of Service",
+    "indicators": [
+      "high dst_host_count",
+      "high dst_host_srv_count",
+      "high src_bytes",
+      "high count"
+    ],
+    "description": "Distributed DoS attacks originate from multiple sources targeting a single system, overwhelming it with massive traffic.",
+    "feature_explanation": {
+      "dst_host_count": "Large number of connections to a single host indicates coordinated attack.",
+      "src_bytes": "High incoming data volume suggests traffic flooding."
+    },
+    "source": "knowledge_base.json",
+    "last_updated": "2026-05-09",
+    "examples": [
+      "How to recognize DDoS vs DoS in indicators?"
+    ]
+  },
+
+  {
+    "id": "kb_3_probe",
+    "attack_type": "Probe",
+    "name": "Network Scanning",
+    "indicators": [
+      "high diff_srv_rate",
+      "high dst_host_count",
+      "low src_bytes",
+      "high srv_diff_host_rate"
+    ],
+    "description": "Probe attacks scan networks to discover open ports and services, often as a precursor to further attacks.",
+    "feature_explanation": {
+      "diff_srv_rate": "Connections to multiple services indicate scanning behavior.",
+      "srv_diff_host_rate": "Connections to multiple hosts suggest reconnaissance activity."
+    },
+    "source": "knowledge_base.json",
+    "last_updated": "2026-05-09",
+    "examples": [
+      "What features indicate network scanning?"
+    ]
+  },
+
+  {
+    "id": "kb_4_portscan",
+    "attack_type": "PortScan",
+    "name": "Port Scanning",
+    "indicators": [
+      "high dst_host_count",
+      "high diff_srv_rate",
+      "low duration"
+    ],
+    "description": "Port scanning involves probing multiple ports on a host to identify open services.",
+    "feature_explanation": {
+      "dst_host_count": "Multiple connection attempts to the same host.",
+      "diff_srv_rate": "Different services accessed indicates scanning."
+    },
+    "source": "knowledge_base.json",
+    "last_updated": "2026-05-09",
+    "examples": [
+      "Explain indicators for port scanning"
+    ]
+  },
+
+  {
+    "id": "kb_5_r2l",
+    "attack_type": "R2L",
+    "name": "Remote to Local Attack",
+    "indicators": [
+      "high num_failed_logins",
+      "logged_in = 0",
+      "is_guest_login = 1"
+    ],
+    "description": "R2L attacks attempt unauthorized access to a system from a remote machine.",
+    "feature_explanation": {
+      "num_failed_logins": "Repeated login failures indicate brute-force attempts.",
+      "logged_in": "Failed authentication attempts signal intrusion attempts."
+    },
+    "source": "knowledge_base.json",
+    "last_updated": "2026-05-09",
+    "examples": [
+      "What suggests a remote-to-local attack?"
+    ]
+  },
+
+  {
+    "id": "kb_6_bruteforce",
+    "attack_type": "BruteForce",
+    "name": "Brute Force Login",
+    "indicators": [
+      "high num_failed_logins",
+      "low success rate",
+      "logged_in = 0"
+    ],
+    "description": "Brute force attacks attempt multiple password combinations to gain unauthorized access.",
+    "feature_explanation": {
+      "num_failed_logins": "Multiple failed login attempts indicate password guessing.",
+      "logged_in": "Failure to log in confirms unsuccessful authentication attempts."
+    },
+    "source": "knowledge_base.json",
+    "last_updated": "2026-05-09",
+    "examples": [
+      "How to detect brute force login attempts?"
+    ]
+  },
+
+  {
+    "id": "kb_7_u2r",
+    "attack_type": "U2R",
+    "name": "User to Root",
+    "indicators": [
+      "root_shell = 1",
+      "num_root high",
+      "num_file_creations high"
+    ],
+    "description": "U2R attacks escalate privileges after gaining initial access.",
+    "feature_explanation": {
+      "root_shell": "Root shell access indicates privilege escalation.",
+      "num_root": "Multiple root-level operations suggest compromise."
+    },
+    "source": "knowledge_base.json",
+    "last_updated": "2026-05-09",
+    "examples": [
+      "Which signs indicate privilege escalation?"
+    ]
+  },
+
+  {
+    "id": "kb_8_normal",
+    "attack_type": "Normal",
+    "name": "Normal Traffic",
+    "indicators": [
+      "balanced src_bytes",
+      "low error rates",
+      "stable connection patterns"
+    ],
+    "description": "Normal network traffic follows expected patterns with low error rates and consistent behavior.",
+    "feature_explanation": {
+      "serror_rate": "Low error rates indicate healthy connections.",
+      "count": "Moderate connection counts indicate normal usage."
+    },
+    "source": "knowledge_base.json",
+    "last_updated": "2026-05-09",
+    "examples": [
+      "What does normal traffic look like in indicators?"
+    ]
+  }
+]

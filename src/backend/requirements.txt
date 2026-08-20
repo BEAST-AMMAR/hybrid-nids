@@ -1,0 +1,33 @@
+# Hybrid NIDS Backend Requirements
+# Install with: /usr/local/bin/python3.11 -m pip install -r requirements.txt
+
+# Web framework
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+starlette>=0.27.0
+
+# Database
+sqlalchemy>=2.0.0
+
+# Authentication
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+authlib>=1.2.0
+httpx>=0.24.0
+itsdangerous>=2.1.0
+email-validator>=2.0.0
+python-multipart>=0.0.9
+
+# ML / Data
+numpy>=1.24.0,<2.0.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+tensorflow>=2.16.0
+joblib>=1.3.0
+
+# Optional: embeddings and vector search (required for RAG enhancements)
+sentence-transformers>=2.2.2
+openai>=1.0.0
+
+# Network sniffing
+scapy>=2.5.0
