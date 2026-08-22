@@ -314,24 +314,28 @@ def packet_callback(packet):
 
 async def process_packets():
     """Background task to process packets from the queue without blocking the sniffer."""
+    BATCH_SIZE = 32
     while True:
         try:
-            # Get packet from queue
-            if not packet_queue.empty():
-                packet = packet_queue.get()
+            if packet_queue.empty():
+                await asyncio.sleep(0.01)
+                continue
                 
-                # Perform feature extraction and detection
-                scaled_feat = extractor.packet_to_features(packet)
-                if scaled_feat is not None:
-                    is_anomaly, score = detector.predict(scaled_feat)
-                    
-                    has_ip = packet.haslayer(ScapyIP)
-                    packet_info = {
-                        "src": packet[ScapyIP].src if has_ip else "Unknown",
-                        "dst": packet[ScapyIP].dst if has_ip else "Unknown",
-                        "proto": packet[ScapyIP].proto if has_ip else "Unknown",
-                        "size": len(packet)
-                    }
+            batch = []
+            while not packet_queue.empty() and len(batch) < BATCH_SIZE:
+                batch.append(packet_queue.get())
+                
+            # Perform feature extraction in a separate thread
+            scaled_feats, valid_infos = await asyncio.to_thread(extractor.packets_to_features, batch)
+            
+            if scaled_feats is not None and len(scaled_feats) > 0:
+                # Perform batch prediction
+                is_anomalies, scores = await asyncio.to_thread(detector.predict_batch, scaled_feats)
+                
+                for i in range(len(valid_infos)):
+                    packet_info = valid_infos[i]
+                    is_anomaly = is_anomalies[i]
+                    score = scores[i]
                     
                     data = {
                         "type": "log",
@@ -341,20 +345,21 @@ async def process_packets():
                     }
                     
                     if is_anomaly:
-                        # RAG explanation is async, await it here in the non-blocking task
                         explanation = await rag_service.explain_anomaly(packet_info, score)
                         data["explanation"] = explanation
                         
                     # Broadcast to all connected clients
                     if connected_clients:
                         message = json.dumps(data)
-                        # Create list of tasks to broadcast
                         broadcast_tasks = [client.send_text(message) for client in connected_clients]
                         await asyncio.gather(*broadcast_tasks, return_exceptions=True)
-                
+            
+            for _ in range(len(batch)):
                 packet_queue.task_done()
-            else:
-                await asyncio.sleep(0.01) # Yield if queue is empty
+                
+            # Always yield to the event loop so other tasks can run
+            await asyncio.sleep(0)
+            
         except Exception as e:
             import traceback
             print(f"Error in packet processing task: {e}")

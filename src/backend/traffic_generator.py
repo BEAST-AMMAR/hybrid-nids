@@ -74,8 +74,11 @@ class SyntheticTrafficGenerator:
                     except Exception as e:
                         print(f"Failed to inject packet physically: {e}")
                     
-            # Sleep slightly to simulate network delay
-            time.sleep(random.uniform(0.02, 0.1))
+            # Aggressive traffic: sleep less for anomalies to simulate high throughput
+            if is_anomaly:
+                time.sleep(0.001)
+            else:
+                time.sleep(random.uniform(0.01, 0.05))
 
     def start(self, virtual=True, target_queue=None):
         if self.is_running:

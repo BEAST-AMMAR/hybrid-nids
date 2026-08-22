@@ -11,15 +11,13 @@ class RealTimeFeatureExtractor:
             self.feature_columns = [line.strip() for line in f]
         self.scaler = joblib.load(scaler_path)
         
-        # Label encoders for categorical features
         self.le_proto = joblib.load(os.path.join(models_dir, "le_proto.joblib"))
         self.le_service = joblib.load(os.path.join(models_dir, "le_service.joblib"))
         self.le_flag = joblib.load(os.path.join(models_dir, "le_flag.joblib"))
         
-        # Window-based feature tracking
-        self.packet_history = [] 
+        self.window_size = 2.0
+        self.host_history = {} # dst_ip -> list of (timestamp, service, is_error, src_ip, src_port)
         
-        # Mapping for common ports to services
         self.port_to_service = {
             20: "ftp_data", 21: "ftp", 22: "ssh", 23: "telnet", 25: "smtp",
             42: "name", 53: "domain", 70: "gopher", 79: "finger", 80: "http",
@@ -29,104 +27,136 @@ class RealTimeFeatureExtractor:
             514: "shell", 515: "printer", 540: "uucp", 6667: "IRC"
         }
 
-    def packet_to_features(self, packet):
-        if not (packet.haslayer(scapy.IP)):
-            return None
-        
-        current_time = time.time()
-        ip_layer = packet[scapy.IP]
-        src = ip_layer.src
-        dst = ip_layer.dst
-        
-        # 1. Basic features
-        protocol = "other"
-        if packet.haslayer(scapy.TCP): protocol = "tcp"
-        elif packet.haslayer(scapy.UDP): protocol = "udp"
-        elif packet.haslayer(scapy.ICMP): protocol = "icmp"
-        
-        # 2. Service Identification
-        service = "other"
-        sport = 0
-        dport = 0
-        if packet.haslayer(scapy.TCP):
-            sport = packet[scapy.TCP].sport
-            dport = packet[scapy.TCP].dport
-        elif packet.haslayer(scapy.UDP):
-            sport = packet[scapy.UDP].sport
-            dport = packet[scapy.UDP].dport
+    def _cleanup_history(self, current_time):
+        """Remove packets older than window_size efficiently."""
+        cutoff = current_time - self.window_size
+        for dst in list(self.host_history.keys()):
+            # Filter old packets
+            self.host_history[dst] = [p for p in self.host_history[dst] if p[0] > cutoff]
+            if not self.host_history[dst]:
+                del self.host_history[dst]
+
+    def packets_to_features(self, packets):
+        """Process a batch of packets, update flow states, and return scaled features."""
+        if not packets:
+            return None, []
             
-        service = self.port_to_service.get(sport, self.port_to_service.get(dport, "other"))
+        current_time = time.time()
+        self._cleanup_history(current_time)
         
-        # 3. Flag Identification (TCP only)
-        flag = "SF"
-        if packet.haslayer(scapy.TCP):
-            tcp_layer = packet[scapy.TCP]
-            flags_str = str(tcp_layer.flags)
-            if flags_str == 'S': flag = "S0"
-            elif flags_str == 'SA': flag = "S1"
-            elif flags_str == 'REJ': flag = "REJ"
-            elif 'R' in flags_str: flag = "RSTR" if 'A' in flags_str else "RSTO"
-            else: flag = "SF"
+        data_list = []
+        valid_packet_infos = []
+        
+        for packet in packets:
+            if not packet.haslayer(scapy.IP):
+                continue
+                
+            ip_layer = packet[scapy.IP]
+            src = ip_layer.src
+            dst = ip_layer.dst
+            
+            protocol = "other"
+            if packet.haslayer(scapy.TCP): protocol = "tcp"
+            elif packet.haslayer(scapy.UDP): protocol = "udp"
+            elif packet.haslayer(scapy.ICMP): protocol = "icmp"
+            
+            service = "other"
+            sport, dport = 0, 0
+            if packet.haslayer(scapy.TCP):
+                sport, dport = packet[scapy.TCP].sport, packet[scapy.TCP].dport
+            elif packet.haslayer(scapy.UDP):
+                sport, dport = packet[scapy.UDP].sport, packet[scapy.UDP].dport
+            service = self.port_to_service.get(sport, self.port_to_service.get(dport, "other"))
+            
+            flag = "SF"
+            if packet.haslayer(scapy.TCP):
+                flags_str = str(packet[scapy.TCP].flags)
+                if flags_str == 'S': flag = "S0"
+                elif flags_str == 'SA': flag = "S1"
+                elif flags_str == 'REJ': flag = "REJ"
+                elif 'R' in flags_str: flag = "RSTR" if 'A' in flags_str else "RSTO"
+                else: flag = "SF"
 
-        # 4. Intrinsic features
-        src_bytes = len(ip_layer.payload)
-        dst_bytes = 0 
-        land = 1 if ip_layer.src == ip_layer.dst else 0
-        wrong_fragment = ip_layer.frag
-        urgent = packet[scapy.TCP].urgptr if packet.haslayer(scapy.TCP) else 0
+            src_bytes = len(ip_layer.payload)
+            dst_bytes = 0 
+            land = 1 if src == dst else 0
+            wrong_fragment = ip_layer.frag
+            urgent = packet[scapy.TCP].urgptr if packet.haslayer(scapy.TCP) else 0
+            
+            is_error = 1 if flag in ["REJ", "RSTR", "RSTO", "S0"] else 0
+            
+            # Update efficient dictionary-based history
+            if dst not in self.host_history:
+                self.host_history[dst] = []
+            self.host_history[dst].append((current_time, service, is_error, src, sport))
+            
+            # Calculate metrics for THIS destination
+            hist = self.host_history[dst]
+            count = len(hist)
+            srv_count = sum(1 for p in hist if p[1] == service)
+            serror_count = sum(1 for p in hist if p[2] == 1)
+            srv_serror_count = sum(1 for p in hist if p[1] == service and p[2] == 1)
+            same_src_port_count = sum(1 for p in hist if p[3] == src and p[4] == sport)
+            
+            serror_rate = serror_count / count if count > 0 else 0.0
+            srv_serror_rate = srv_serror_count / srv_count if srv_count > 0 else 0.0
+            same_srv_rate = srv_count / count if count > 0 else 1.0
+            diff_srv_rate = 1.0 - same_srv_rate
+            dst_host_same_src_port_rate = same_src_port_count / count if count > 0 else 0.0
+            
+            data = {
+                'duration': 0, 'protocol_type': protocol, 'service': service, 'flag': flag,
+                'src_bytes': src_bytes, 'dst_bytes': dst_bytes, 'land': land, 'wrong_fragment': wrong_fragment,
+                'urgent': urgent, 'hot': 0, 'num_failed_logins': 0, 'logged_in': 0, 'num_compromised': 0,
+                'root_shell': 0, 'su_attempted': 0, 'num_root': 0, 'num_file_creations': 0, 'num_shells': 0,
+                'num_access_files': 0, 'num_outbound_cmds': 0, 'is_host_login': 0, 'is_guest_login': 0,
+                'count': count, 'srv_count': srv_count, 'serror_rate': serror_rate, 'srv_serror_rate': srv_serror_rate,
+                'rerror_rate': 0, 'srv_rerror_rate': 0, 'same_srv_rate': same_srv_rate, 'diff_srv_rate': diff_srv_rate,
+                'srv_diff_host_rate': 0.0, 'dst_host_count': count, 'dst_host_srv_count': srv_count,
+                'dst_host_same_srv_rate': same_srv_rate, 'dst_host_diff_srv_rate': diff_srv_rate,
+                'dst_host_same_src_port_rate': dst_host_same_src_port_rate, 'dst_host_srv_diff_host_rate': 0.0,
+                'dst_host_serror_rate': serror_rate, 'dst_host_srv_serror_rate': srv_serror_rate,
+                'dst_host_rerror_rate': 0.0, 'dst_host_srv_rerror_rate': 0.0
+            }
+            data_list.append(data)
+            
+            packet_info = {
+                "src": src,
+                "dst": dst,
+                "proto": protocol,
+                "service": service,
+                "size": len(packet)
+            }
+            valid_packet_infos.append(packet_info)
 
-        # Update history for window-based features (2s window)
-        is_error = 1 if flag in ["REJ", "RSTR", "RSTO", "S0"] else 0
-        self.packet_history.append((current_time, src, dst, service, is_error))
-        self.packet_history = [p for p in self.packet_history if current_time - p[0] <= 2.0]
-
-        # Calculate counts
-        count = sum(1 for p in self.packet_history if p[2] == dst)
-        srv_count = sum(1 for p in self.packet_history if p[3] == service)
-        serror_rate = sum(1 for p in self.packet_history if p[2] == dst and p[4] == 1) / count if count > 0 else 0
-        srv_serror_rate = sum(1 for p in self.packet_history if p[3] == service and p[4] == 1) / srv_count if srv_count > 0 else 0
+        if not data_list:
+            return None, []
+            
+        df = pd.DataFrame(data_list)
         
-        # Create Dataframe
-        data = {
-            'duration': 0,
-            'protocol_type': protocol,
-            'service': service,
-            'flag': flag,
-            'src_bytes': src_bytes,
-            'dst_bytes': dst_bytes,
-            'land': land,
-            'wrong_fragment': wrong_fragment,
-            'urgent': urgent,
-            'hot': 0, 'num_failed_logins': 0, 'logged_in': 0, 'num_compromised': 0, 'root_shell': 0, 'su_attempted': 0, 'num_root': 0, 'num_file_creations': 0, 'num_shells': 0, 'num_access_files': 0, 'num_outbound_cmds': 0, 'is_host_login': 0, 'is_guest_login': 0,
-            'count': count,
-            'srv_count': srv_count,
-            'serror_rate': serror_rate,
-            'srv_serror_rate': srv_serror_rate,
-            'rerror_rate': 0, 'srv_rerror_rate': 0, 'same_srv_rate': 1.0, 'diff_srv_rate': 0.0, 'srv_diff_host_rate': 0.0,
-            'dst_host_count': count, 'dst_host_srv_count': srv_count, 'dst_host_same_srv_rate': 1.0, 'dst_host_diff_srv_rate': 0.0, 'dst_host_same_src_port_rate': 1.0, 'dst_host_srv_diff_host_rate': 0.0, 'dst_host_serror_rate': serror_rate, 'dst_host_srv_serror_rate': srv_serror_rate, 'dst_host_rerror_rate': 0.0, 'dst_host_srv_rerror_rate': 0.0
-        }
+        # Enforce column order to prevent scaling errors
+        for col in self.feature_columns:
+            if col not in df.columns:
+                df[col] = 0
+        df = df[self.feature_columns]
         
-        df = pd.DataFrame([data])
-        
-        # Encode categorical
+        # Categorical Encoding
         try:
             df['protocol_type'] = self.le_proto.transform(df['protocol_type'])
         except: df['protocol_type'] = 0
-            
         try:
             df['service'] = self.le_service.transform(df['service'])
         except: df['service'] = 0
-            
         try:
             df['flag'] = self.le_flag.transform(df['flag'])
         except: df['flag'] = 0
-        
-        # Scale
+
         import warnings
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
             scaled_features = self.scaler.transform(df.values)
-        return scaled_features
+            
+        return scaled_features, valid_packet_infos
 
 def start_sniffing(callback):
     print("Starting packet sniffing...")

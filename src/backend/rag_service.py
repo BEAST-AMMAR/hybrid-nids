@@ -35,28 +35,22 @@ class RAGExplanationService:
             }
         }
 
-        # Initialize KB vector index if available
-        self.kb_index = None
+        # Prepare TF-IDF index for local semantic search
         try:
-            from .kb_index import KBIndex
-            kb_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', 'knowledge_base_enhanced.json')
-            kb_file = os.path.abspath(kb_file)
-            # fallback to original if enhanced missing
-            if not os.path.exists(kb_file):
-                kb_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', 'knowledge_base.json')
-                kb_file = os.path.abspath(kb_file)
-
-            self.kb_index = KBIndex(kb_file)
-            try:
-                self.kb_index.load()
-            except Exception:
-                # try building; may fail if embeddings provider not installed
-                try:
-                    self.kb_index.build()
-                except Exception:
-                    self.kb_index = None
-        except Exception:
-            self.kb_index = None
+            from sklearn.feature_extraction.text import TfidfVectorizer
+            
+            self.kb_texts = []
+            self.kb_keys = []
+            for key, val in self.knowledge_base.items():
+                self.kb_keys.append(key)
+                text = f"{val['description']} {val['details']} {' '.join(val['indicators'])}"
+                self.kb_texts.append(text)
+                
+            self.vectorizer = TfidfVectorizer(stop_words='english')
+            self.tfidf_matrix = self.vectorizer.fit_transform(self.kb_texts)
+            self.use_tfidf = True
+        except ImportError:
+            self.use_tfidf = False
 
     async def explain_anomaly(self, packet_info: dict, hybrid_score: float):
         """
@@ -71,23 +65,37 @@ class RAGExplanationService:
         explanation += f"**Indicators Observed:** {', '.join(context['indicators'])}\n\n"
         explanation += f"**Technical Details:** Packet from {packet_info.get('src', 'unknown')} to {packet_info.get('dst', 'unknown')} using protocol {packet_info.get('proto', 'unknown')} (Service: {packet_info.get('service', 'unknown')}) was flagged with a high anomaly score of {hybrid_score:.4f}."
 
-        # If KB index available, retrieve supporting knowledge snippets
-        if self.kb_index is not None:
+        # Perform local TF-IDF Search
+        if self.use_tfidf:
             try:
+                from sklearn.metrics.pairwise import cosine_similarity
                 q_tokens: List[str] = []
                 # create a short query string from observed fields
                 for k in ('service', 'proto', 'src_bytes', 'dst_host_count', 'diff_srv_rate', 'num_failed_logins', 'serror_rate'):
                     if k in packet_info:
-                        q_tokens.append(f"{k}:{packet_info[k]}")
+                        q_tokens.append(f"{k} {packet_info[k]}")
                 q_tokens.append(attack_category)
                 query_text = ' '.join(map(str, q_tokens))
-                hits = self.kb_index.query(query_text, top_k=3)
-                if hits:
-                    explanation += "\n\n**Knowledge Base Matches:**\n"
-                    for ent, score in hits:
-                        explanation += f"- {ent.get('name')} ({ent.get('attack_type')}): {ent.get('description')} [score={score:.3f}]\n"
-            except Exception:
-                pass
+                
+                query_vec = self.vectorizer.transform([query_text])
+                sims = cosine_similarity(query_vec, self.tfidf_matrix).flatten()
+                
+                top_indices = sims.argsort()[-3:][::-1]
+                
+                hits_found = False
+                hit_text = "\n\n**Knowledge Base Matches:**\n"
+                for idx in top_indices:
+                    score = sims[idx]
+                    if score > 0.05: # Threshold
+                        hits_found = True
+                        k = self.kb_keys[idx]
+                        kb_item = self.knowledge_base[k]
+                        hit_text += f"- {kb_item['description']} [score={score:.3f}]\n"
+                        
+                if hits_found:
+                    explanation += hit_text
+            except Exception as e:
+                print(f"TF-IDF search error: {e}")
 
         # If API key is available, we could enhance this with an LLM call.
         if self.api_key != "your-api-key-placeholder":

@@ -37,12 +37,22 @@ class HybridDetector:
         """
         Takes scaled features and returns (is_anomaly, hybrid_score).
         """
+        anomalies, scores = self.predict_batch(scaled_features)
+        return anomalies[0], scores[0]
+
+    def predict_batch(self, scaled_features_batch):
+        """
+        Takes a batch of scaled features and returns lists of (is_anomaly, hybrid_score).
+        """
+        if len(scaled_features_batch) == 0:
+            return [], []
+            
         # AE score (MSE)
-        reconstruction = self.autoencoder.predict(scaled_features, verbose=0)
-        mse = np.mean(np.power(scaled_features - reconstruction, 2), axis=1)
+        reconstruction = self.autoencoder.predict(scaled_features_batch, verbose=0)
+        mse = np.mean(np.power(scaled_features_batch - reconstruction, 2), axis=1)
 
         # IF score
-        if_scores = -self.iso_forest.decision_function(scaled_features)
+        if_scores = -self.iso_forest.decision_function(scaled_features_batch)
 
         # Normalize — use saved scalers if present, otherwise inline min-max
         if self.ae_scaler is not None:
@@ -61,7 +71,9 @@ class HybridDetector:
             )
 
         # Hybrid score
-        hybrid_score = self.alpha * ae_norm + (1 - self.alpha) * if_norm
-
-        is_anomaly = hybrid_score[0] > self.threshold
-        return bool(is_anomaly), float(hybrid_score[0])
+        hybrid_scores = self.alpha * ae_norm + (1 - self.alpha) * if_norm
+        
+        is_anomalies = [bool(score > self.threshold) for score in hybrid_scores]
+        scores_float = [float(score) for score in hybrid_scores]
+        
+        return is_anomalies, scores_float
