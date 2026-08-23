@@ -48,9 +48,9 @@ const Login = ({ setToken }) => {
                 {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">
-                        <label className="block text-gray-400 mb-2">Email or Username</label>
+                        <label className="block text-gray-400 mb-2">Email</label>
                         <input
-                            type="text"
+                            type="email"
                             className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-500"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
